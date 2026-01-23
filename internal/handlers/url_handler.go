@@ -8,14 +8,15 @@ import (
 	"github.com/Milki7/URL_shortner/internal/models"
 	"github.com/Milki7/URL_shortner/internal/utils"
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
 type URLHandler struct {
-	DB *gorm.DB
+	DB    *gorm.DB
+	Redis *redis.Client
 }
 
-// Shorten handles POST /shorten
 func (h *URLHandler) Shorten(c *gin.Context) {
 	var input struct {
 		LongURL string `json:"long_url" binding:"required"`
@@ -27,16 +28,17 @@ func (h *URLHandler) Shorten(c *gin.Context) {
 	}
 
 	urlEntry := models.URL{OriginalURL: input.LongURL}
-	h.DB.Create(&urlEntry) // Create entry to get the ID
+	h.DB.Create(&urlEntry)
 
-	// Generate code from ID and update record
 	shortCode := utils.Encode(urlEntry.ID)
 	h.DB.Model(&urlEntry).Update("ShortCode", shortCode)
+
+	// OPTIONAL: Warm the cache immediately
+	h.Redis.Set(c.Request.Context(), shortCode, input.LongURL, 24*time.Hour)
 
 	c.JSON(http.StatusOK, gin.H{"short_url": "http://localhost:8080/" + shortCode})
 }
 
-// Redirect handles GET /:code
 func (h *URLHandler) Redirect(c *gin.Context) {
 	code := c.Param("code")
 	ctx := c.Request.Context()
