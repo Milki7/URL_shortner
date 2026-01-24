@@ -4,7 +4,7 @@ import "time"
 
 type URL struct {
 	ID          uint   `gorm:"primaryKey"`
-	OriginalURL string `gorm:"notNull"`
-	ShortCode   string `gorm:"uniqueIndex"`
+	OriginalURL string `gorm:"not null"`
+	ShortCode   string `gorm:"uniqueIndex;not null"`
 	CreatedAt   time.Time
 }
