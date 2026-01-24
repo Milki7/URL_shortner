@@ -38,6 +38,31 @@ func (h *URLHandler) Shorten(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"short_url": "http://localhost:8080/" + shortCode})
 }
+func (h *URLHandler) Shorten(c *gin.Context) {
+	// ... binding logic ...
+
+	var shortCode string
+	for {
+		// 1. Generate a random 6-character string
+		shortCode = utils.GenerateRandomCode(6)
+
+		// 2. Check if it exists in the DB
+		var existing models.URL
+		if err := h.DB.Where("short_code = ?", shortCode).First(&existing).Error; err != nil {
+			// If error is "record not found", we are good!
+			break
+		}
+		// If it found something, the loop runs again to pick a new one
+	}
+
+	urlEntry := models.URL{
+		OriginalURL: input.LongURL,
+		ShortCode:   shortCode,
+	}
+	h.DB.Create(&urlEntry)
+
+	c.JSON(http.StatusOK, gin.H{"short_url": "http://localhost:8080/" + shortCode})
+}
 
 func (h *URLHandler) Redirect(c *gin.Context) {
 	code := c.Param("code")

@@ -1,19 +1,19 @@
 package utils
 
 import (
-	"math/rand"
-	"time"
+	"crypto/rand"
+	"math/big"
 )
 
 const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
+// GenerateRandomCode creates a secure random string of a given length
 func GenerateRandomCode(length int) string {
-	// Seed the random generator
-	rand.Seed(time.Now().UnixNano())
-
 	b := make([]byte, length)
 	for i := range b {
-		b[i] = charset[rand.Intn(len(charset))]
+		// crypto/rand is much safer for unique IDs than math/rand
+		num, _ := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
+		b[i] = charset[num.Int64()]
 	}
 	return string(b)
 }
