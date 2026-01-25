@@ -1,0 +1,7 @@
+# In ~/Documents/URL_shortner
+cat <<EOF > .gitignore
+urls.db
+urls.db-journal
+URL_shortner
+.env
+EOF

@@ -20,6 +20,7 @@ type URLHandler struct {
 func (h *URLHandler) Shorten(c *gin.Context) {
 	var input struct {
 		LongURL string `json:"long_url" binding:"required"`
+		Alias   string `json:"alias"` // Optional field
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -28,16 +29,24 @@ func (h *URLHandler) Shorten(c *gin.Context) {
 	}
 
 	var shortCode string
-	// Collision Handling: Loop until we find a unique code
-	for {
-		shortCode = utils.GenerateRandomCode(6) // 6 chars = ~56 billion combinations
 
+	// CASE 1: User provided a custom alias
+	if input.Alias != "" {
+		shortCode = input.Alias
 		var existing models.URL
-		// Check if this code is already in the DB
-		result := h.DB.Where("short_code = ?", shortCode).First(&existing)
-		if result.Error != nil {
-			// If error is "Record Not Found", the code is unique!
-			break
+		// Check if the custom alias is already taken
+		if err := h.DB.Where("short_code = ?", shortCode).First(&existing).Error; err == nil {
+			c.JSON(http.StatusConflict, gin.H{"error": "Alias already in use"})
+			return
+		}
+	} else {
+		// CASE 2: No alias provided, generate a random one
+		for {
+			shortCode = utils.GenerateRandomCode(6)
+			var existing models.URL
+			if err := h.DB.Where("short_code = ?", shortCode).First(&existing).Error; err != nil {
+				break // Unique code found
+			}
 		}
 	}
 
@@ -51,7 +60,7 @@ func (h *URLHandler) Shorten(c *gin.Context) {
 		return
 	}
 
-	// Warm the Redis cache immediately for speed
+	// Cache it in Redis immediately
 	h.Redis.Set(c.Request.Context(), shortCode, input.LongURL, 24*time.Hour)
 
 	c.JSON(http.StatusOK, gin.H{"short_url": "http://localhost:8080/" + shortCode})
